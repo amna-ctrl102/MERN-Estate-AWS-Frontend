@@ -1,0 +1,324 @@
+import { useSelector, useDispatch } from "react-redux";
+import { useRef, useState, useEffect } from "react";
+import { supabase } from "../supabase";
+import { Link } from "react-router-dom";
+import {
+  updateUserStart,
+  updateUserSuccess,
+  updateUserFailure,
+  deleteUserFailure,
+  deleteUserStart,
+  deleteUserSuccess,
+  signOutUserStart,
+  signOutUserFailure,
+  signOutUserSuccess,
+} from "../redux/user/userSlice";
+
+export default function Profile() {
+  const fileRef = useRef(null);
+  const { currentUser, loading, error } = useSelector((state) => state.user);
+  const dispatch = useDispatch();
+
+  const [file, setFile] = useState(undefined);
+  const [filePerc, setFilePerc] = useState(0);
+  const [fileUploadError, setFileUploadError] = useState(false);
+  const [updateUser, setUpdateUser] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [showListingError, setShowListingError] = useState(false);
+  const [userListing, setUserListing] = useState([]);
+
+  console.log(file);
+
+  // Form state
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setpassword] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  console.log("Current user is : ", currentUser);
+
+  // Pre-fill form when currentUser loads
+  useEffect(() => {
+    if (currentUser) {
+      setUsername(currentUser.username || "");
+      setEmail(currentUser.email || "");
+      setAvatarUrl(currentUser.avatar || "");
+    }
+  }, [currentUser]);
+
+  const handleFileUpload = async (file) => {
+    //FILE UPLOAD TASK
+    setFilePerc(5);
+    setFilePerc(20);
+    setFilePerc(40);
+    setFilePerc(50);
+    const fileName = `${Date.now()}-${file.name}`;
+    const { data, error } = await supabase.storage
+      .from("Avatars")
+      .upload(fileName, file);
+
+    if (error) {
+      setFileUploadError(true);
+      console.log("Upload error:", error);
+      return;
+    }
+    const { data: publicUrlData } = supabase.storage
+      .from("Avatars")
+      .getPublicUrl(fileName);
+
+    const imageUrl = publicUrlData?.publicUrl;
+    if (!imageUrl) {
+      setFileUploadError(true);
+      return;
+    }
+
+    setFilePerc(100);
+    setUploadSuccess(true);
+    setAvatarUrl(imageUrl);
+    setTimeout(() => {
+      setUploadSuccess(false);
+    }, 3000);
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+
+    try {
+      dispatch(updateUserStart());
+      const res = await fetch(`/api/user/update/${currentUser._id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username,
+          email,
+          password,
+          avatar: avatarUrl,
+        }),
+      });
+      const data = await res.json();
+      if (data.success === false) {
+        dispatch(updateUserFailure(data.message));
+        return;
+      }
+      dispatch(updateUserSuccess(data));
+      setUpdateUser(true);
+      setTimeout(() => {
+        setUpdateUser(false);
+      }, 5000);
+    } catch (error) {
+      updateUserFailure(error.message);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    try {
+      dispatch(deleteUserStart());
+      const res = await fetch(`/api/user/delete/${currentUser._id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success === false) {
+        dispatch(deleteUserFailure(data.message));
+        return;
+      }
+      dispatch(deleteUserSuccess(data));
+    } catch (error) {
+      dispatch(deleteUserFailure(error.message));
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      dispatch(signOutUserStart());
+      const res = await fetch("/api/auth/signout", {
+        method: "GET",
+      });
+      const data = await res.json();
+      if (data.success === false) {
+        dispatch(signOutUserFailure(data.message));
+        return;
+      }
+      dispatch(signOutUserSuccess(data));
+    } catch (error) {
+      dispatch(signOutUserFailure(error.message));
+    }
+  };
+
+  const handleShowListings = async () => {
+    try {
+      setShowListingError(false);
+      const res = await fetch(`/api/user/listings/${currentUser._id}`);
+      const data = await res.json();
+      if (data.success === false) {
+        setShowListingError(true);
+        return;
+      }
+      setUserListing(data);
+    } catch (error) {
+      setShowListingError(true);
+    }
+  };
+
+  const handleListingDelete = async (listingId) => {
+    try {
+      setShowListingError(false);
+      const res = await fetch(`/api/listing/delete/${listingId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success === false) {
+        setShowListingError(true);
+        return;
+      }
+      setUserListing((prev) => {
+        return prev.filter((listing) => listing._id !== listingId);
+      });
+    } catch (error) {
+      setShowListingError(true);
+    }
+  };
+
+  return (
+    <div className="p-3 max-w-lg mx-auto">
+      <h1 className="text-3xl text-blue-950 font-semibold text-center my-3">Profile</h1>
+      <form className="flex flex-col gap-3" onSubmit={handleUpdate}>
+        <input
+          type="file"
+          ref={fileRef}
+          hidden
+          accept="image/*"
+          onChange={async (e) => {
+            const selectedFile = e.target.files[0];
+            if (selectedFile) {
+              setFile(selectedFile);
+              await handleFileUpload(selectedFile); // upload immediately
+            }
+          }}
+        />
+        <img
+          src={
+            avatarUrl ||
+            currentUser?.avatar ||
+            "https://static.vecteezy.com/system/resources/previews/046/409/821/non_2x/avatar-profile-icon-in-flat-style-male-user-profile-illustration-on-isolated-background-man-profile-sign-business-concept-vector.jpg"
+          }
+          alt="profile"
+          className="rounded-full h-24 w-24 object-cover self-center mt-2 cursor-pointer"
+          onClick={() => fileRef.current.click()}
+        />
+        <p className="text-sm self-center">
+          {fileUploadError ? (
+            <span className="text-red-700">
+              Error uploading image (must be image & less than 5MB)
+            </span>
+          ) : filePerc > 0 && filePerc < 100 ? (
+            <span className="text-slate-700">{`Uploading ${filePerc}%`}</span>
+          ) : filePerc === 100 && uploadSuccess ? (
+            <span className="text-green-700">Image successfully uploaded!</span>
+          ) : (
+            ""
+          )}
+        </p>
+        <input
+          type="text"
+          placeholder="username"
+          value={username}
+          id="username"
+          className="border border-blue-200 p-3 rounded-lg bg-white text-blue-950 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 hover:shadow-md transition"
+          onChange={(e) => setUsername(e.target.value)}
+        />
+        <input
+          type="email"
+          placeholder="email"
+          value={email}
+          id="email"
+          className="border border-blue-200 p-3 rounded-lg bg-white text-blue-950 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 hover:shadow-md transition"
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
+          type="password"
+          placeholder="password"
+          id="password"
+          className="border border-blue-200 p-3 rounded-lg bg-white text-blue-950 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 hover:shadow-md transition"
+          onChange={(e) => setpassword(e.target.value)}
+        />
+        <button
+          disabled={loading}
+          className="bg-blue-950 text-white font-semibold rounded-lg uppercase hover:opacity-95 p-3 hover:shadow-md transition"
+          type="submit"
+        >
+          {loading ? "loading..." : "Update"}
+        </button>
+        <Link
+          className="bg-amber-500 text-white p-3 rounded-lg text-center font-semibold uppercase hover:opacity-95 hover:shadow-md transition"
+          to={"/create-listing"}
+        >
+          {" "}
+          Create Listing
+        </Link>
+      </form>
+      <div className="flex justify-between mt-4">
+        <span
+          onClick={handleDeleteUser}
+          className="text-red-700 cursor-pointer"
+        >
+          Delete Account
+        </span>
+        <span onClick={handleSignOut} className="text-red-700 cursor-pointer">
+          {" "}
+          Sign Out
+        </span>
+      </div>
+      <p className="text-red-700 mt-3">{error ? error : ""}</p>
+      <p className="text-green-700 mt-3">
+        {updateUser ? "User updated Successfully" : ""}
+      </p>
+      <button onClick={handleShowListings} className="text-amber-500 hover:text-amber-600 font-semibold w-full">
+        Show Listings
+      </button>
+      <p className="text-red-700 mt-3">
+        {showListingError ? "Error showing listings" : ""}
+      </p>
+      {userListing && userListing.length > 0 && (
+        <div className="flex flex-col gap-4">
+          <h1 className="text-center text-blue-950 text-2xl font-semibold mt-7">
+            Your Listings
+          </h1>
+          {userListing.map((listing) => {
+            return (
+              <div
+                key={listing._id}
+                className=" bg-white border border-blue-200 rounded-lg p-3 flex justify-between items-center gap-4 hover:shadow-md transition"
+              >
+                <Link to={`/listing/${listing._id}`}>
+                  <img
+                    src={listing.imageUrls[0]}
+                    alt="Listing Cover Image"
+                    className="h-16 w-16 object-contain"
+                  />
+                </Link>
+                <Link
+                  to={`/listing/${listing._id}`}
+                  className="text-slate-700 font-semibold flex-1 hover:underline truncate"
+                >
+                  <p>{listing.name}</p>
+                </Link>
+                <div className="flex flex-col items-center">
+                  <button
+                    onClick={() => handleListingDelete(listing._id)}
+                    className="text-red-700 uppercase"
+                  >
+                    Delete
+                  </button>
+                  <Link to={`/update-listing/${listing._id}`}>
+                    <button className="text-green-700 uppercase">Edit</button>
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
