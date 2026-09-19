@@ -135,11 +135,13 @@ export default function UpdateListing() {
       }
       setLoading(true);
       setError(false);
+      const token = localStorage.getItem("token");
       const res=await fetch(`${import.meta.env.VITE_API_URL}/api/listing/update/${params.listingId}`,{
         method:"POST",
         credentials:"include",
         headers:{
           "Content-Type":"application/json",
+          "Authorization": `Bearer ${token}`,
         },
         body:JSON.stringify({
           ...formData,

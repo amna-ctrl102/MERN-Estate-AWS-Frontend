@@ -26,6 +26,7 @@ export default function OAuth() {
       });
       const data=await res.json();
       dispatch(signInSuccess(data));
+      localStorage.setItem("token", data.token);
       navigate("/");
     } catch (error) {
       console.log("could not sign in with google", error);

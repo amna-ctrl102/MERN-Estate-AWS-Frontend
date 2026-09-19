@@ -84,11 +84,13 @@ export default function Profile() {
 
     try {
       dispatch(updateUserStart());
+      const token = localStorage.getItem("token");
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/user/update/${currentUser._id}`, {
         method: "POST",
         credentials:"include",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
           username,
@@ -115,9 +117,13 @@ export default function Profile() {
   const handleDeleteUser = async () => {
     try {
       dispatch(deleteUserStart());
+      const token = localStorage.getItem("token");
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/user/delete/${currentUser._id}`, {
         method: "DELETE",
         credentials:"include",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
       });
       const data = await res.json();
       if (data.success === false) {
@@ -151,8 +157,12 @@ export default function Profile() {
   const handleShowListings = async () => {
     try {
       setShowListingError(false);
+      const token = localStorage.getItem("token");
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/user/listings/${currentUser._id}`,{
         credentials:"include",
+         headers: {
+          "Authorization": `Bearer ${token}`,
+        },
       });
       const data = await res.json();
       if (data.success === false) {
@@ -168,9 +178,13 @@ export default function Profile() {
   const handleListingDelete = async (listingId) => {
     try {
       setShowListingError(false);
+      const token = localStorage.getItem("token");
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/listing/delete/${listingId}`, {
         method: "DELETE",
         credentials:"include",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
       });
       const data = await res.json();
       if (data.success === false) {
