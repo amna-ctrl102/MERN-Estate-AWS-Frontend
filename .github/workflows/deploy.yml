@@ -1,0 +1,47 @@
+name: Deploy Frontend to AWS ECS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        run: |
+          docker build -t mern-estate-frontend .
+
+      - name: Tag Docker image
+        run: |
+          docker tag mern-estate-frontend:latest \
+            283519660276.dkr.ecr.ap-south-1.amazonaws.com/mern-estate-frontend:latest
+
+      - name: Push Docker image to ECR
+        run: |
+          docker push \
+            283519660276.dkr.ecr.ap-south-1.amazonaws.com/mern-estate-frontend:latest
+
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service \
+            --cluster mern-estate-cluster \
+            --service mern-estate-frontend-service \
+            --force-new-deployment \
+            --region ap-south-1
