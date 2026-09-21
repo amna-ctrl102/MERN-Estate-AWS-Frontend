@@ -13,6 +13,8 @@ export default function Home() {
   SwiperCore.use([Navigation]);
   console.log(offerListings);
 
+  // CI/CD test
+
   useEffect(() => {
     const fetchOfferListing = async () => {
       try {
