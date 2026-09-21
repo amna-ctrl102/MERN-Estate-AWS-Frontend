@@ -26,7 +26,12 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t mern-estate-frontend .
+          docker build \
+            --build-arg VITE_FIREBASE_API_KEY="${{ secrets.VITE_FIREBASE_API_KEY }}" \
+            --build-arg VITE_SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL }}" \
+            --build-arg VITE_SUPABASE_ANON_KEY="${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
+            --build-arg VITE_API_URL="${{ secrets.VITE_API_URL }}" \
+            -t mern-estate-frontend .
 
       - name: Tag Docker image
         run: |
